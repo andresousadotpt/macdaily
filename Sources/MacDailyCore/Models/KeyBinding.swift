@@ -31,8 +31,21 @@ public struct KeyBinding: Codable, Sendable, Equatable, Hashable {
         if option { parts.append("⌥") }
         if shift { parts.append("⇧") }
         if command { parts.append("⌘") }
-        parts.append(key.uppercased())
+        parts.append(Self.displayName(for: key))
         return parts.joined()
+    }
+
+    public static func displayName(for key: String) -> String {
+        switch key.lowercased() {
+        case "home": "HOME"
+        case "end": "END"
+        case "tab": "⇥"
+        default: key.uppercased()
+        }
+    }
+
+    public var isTabBinding: Bool {
+        key == "tab" && !command && !option && !control
     }
 
     public var modifierFlagsRawValue: UInt {

@@ -13,7 +13,78 @@ final class FormattingTextView: NSTextView {
             }
             return true
         }
+        if handleEditorShortcuts(with: event) {
+            return true
+        }
         return super.performKeyEquivalent(with: event)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if handleEditorShortcuts(with: event) {
+            return
+        }
+        super.keyDown(with: event)
+    }
+
+    override func insertTab(_ sender: Any?) {
+        let binding = keyboardShortcuts.binding(for: .indent)
+        if binding.isTabBinding {
+            applyIndentation(outdent: false)
+            return
+        }
+        super.insertTab(sender)
+    }
+
+    override func insertBacktab(_ sender: Any?) {
+        let binding = keyboardShortcuts.binding(for: .outdent)
+        if binding.isTabBinding && binding.shift {
+            applyIndentation(outdent: true)
+            return
+        }
+        super.insertBacktab(sender)
+    }
+
+    private func handleEditorShortcuts(with event: NSEvent) -> Bool {
+        guard let action = keyboardShortcuts.matchingEditorAction(for: event) else { return false }
+        switch action {
+        case .beginningOfLine:
+            if event.modifierFlags.contains(.shift) {
+                moveToBeginningOfLineAndModifySelection(nil)
+            } else {
+                moveToBeginningOfLine(nil)
+            }
+        case .endOfLine:
+            if event.modifierFlags.contains(.shift) {
+                moveToEndOfLineAndModifySelection(nil)
+            } else {
+                moveToEndOfLine(nil)
+            }
+        case .indent:
+            applyIndentation(outdent: false)
+        case .outdent:
+            applyIndentation(outdent: true)
+        }
+        return true
+    }
+
+    private func applyIndentation(outdent: Bool) {
+        let range = selectedRange()
+        if outdent {
+            guard let result = TextIndentation.applyShiftTab(to: string, range: range) else { return }
+            applyTextEdit(result)
+            return
+        }
+        applyTextEdit(TextIndentation.applyTab(to: string, range: range))
+    }
+
+    private func applyTextEdit(_ result: TextIndentationResult) {
+        let nsText = string as NSString
+        let replacementLength = (result.text as NSString).length - nsText.length + result.replacedRange.length
+        let replacement = (result.text as NSString).substring(
+            with: NSRange(location: result.replacedRange.location, length: replacementLength)
+        )
+        insertText(replacement, replacementRange: result.replacedRange)
+        setSelectedRange(result.selectedRange)
     }
 
     override func paste(_ sender: Any?) {

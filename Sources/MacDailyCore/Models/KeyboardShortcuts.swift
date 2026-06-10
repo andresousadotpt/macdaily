@@ -7,7 +7,15 @@ public struct KeyboardShortcuts: Codable, Sendable, Equatable, Hashable {
         self.bindings = bindings
     }
 
-    public static let defaultBindings: [String: KeyBinding] = [
+    public static let defaultBindings: [String: KeyBinding] = {
+        var bindings = defaultFormatBindings
+        for (key, value) in defaultEditorBindings {
+            bindings[key] = value
+        }
+        return bindings
+    }()
+
+    private static let defaultFormatBindings: [String: KeyBinding] = [
         MarkdownFormatAction.bold.rawValue: .command("b"),
         MarkdownFormatAction.italic.rawValue: .command("i"),
         MarkdownFormatAction.strikethrough.rawValue: .command("x", shift: true),
@@ -22,11 +30,26 @@ public struct KeyboardShortcuts: Codable, Sendable, Equatable, Hashable {
         MarkdownFormatAction.heading6.rawValue: .command("6", option: true),
     ]
 
+    public static let defaultEditorBindings: [String: KeyBinding] = [
+        EditorShortcutAction.beginningOfLine.rawValue: KeyBinding(key: "home"),
+        EditorShortcutAction.endOfLine.rawValue: KeyBinding(key: "end"),
+        EditorShortcutAction.indent.rawValue: KeyBinding(key: "tab"),
+        EditorShortcutAction.outdent.rawValue: KeyBinding(key: "tab", shift: true),
+    ]
+
     public func binding(for action: MarkdownFormatAction) -> KeyBinding {
         bindings[action.rawValue] ?? Self.defaultBindings[action.rawValue] ?? KeyBinding(key: "")
     }
 
     public mutating func setBinding(_ binding: KeyBinding, for action: MarkdownFormatAction) {
+        bindings[action.rawValue] = binding
+    }
+
+    public func binding(for action: EditorShortcutAction) -> KeyBinding {
+        bindings[action.rawValue] ?? Self.defaultEditorBindings[action.rawValue] ?? KeyBinding(key: "")
+    }
+
+    public mutating func setBinding(_ binding: KeyBinding, for action: EditorShortcutAction) {
         bindings[action.rawValue] = binding
     }
 

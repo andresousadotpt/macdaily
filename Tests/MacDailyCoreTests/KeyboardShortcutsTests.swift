@@ -12,6 +12,12 @@ final class KeyboardShortcutsTests: XCTestCase {
         XCTAssertEqual(binding.displayLabel, "⌥⇧⌘K")
     }
 
+    func testKeyBindingDisplayLabelForSpecialKeys() {
+        XCTAssertEqual(KeyBinding(key: "home").displayLabel, "HOME")
+        XCTAssertEqual(KeyBinding(key: "end").displayLabel, "END")
+        XCTAssertEqual(KeyBinding(key: "tab", shift: true).displayLabel, "⇧⇥")
+    }
+
     func testKeyBindingModifierFlags() {
         let binding = KeyBinding(key: "b", command: true, shift: true)
         let flags = binding.modifierFlagsRawValue
@@ -45,6 +51,21 @@ final class KeyboardShortcutsTests: XCTestCase {
         let shortcuts = try JSONDecoder().decode(KeyboardShortcuts.self, from: Data(json.utf8))
         XCTAssertEqual(shortcuts.binding(for: .heading1).key, "1")
         XCTAssertTrue(shortcuts.binding(for: .heading1).option)
+    }
+
+    func testKeyboardShortcutsIncludesEditorDefaults() {
+        let shortcuts = KeyboardShortcuts()
+        XCTAssertEqual(shortcuts.binding(for: EditorShortcutAction.beginningOfLine).key, "home")
+        XCTAssertEqual(shortcuts.binding(for: EditorShortcutAction.endOfLine).key, "end")
+        XCTAssertEqual(shortcuts.binding(for: EditorShortcutAction.indent).key, "tab")
+        XCTAssertTrue(shortcuts.binding(for: EditorShortcutAction.outdent).shift)
+    }
+
+    func testKeyboardShortcutsResetIncludesEditorDefaults() {
+        var shortcuts = KeyboardShortcuts()
+        shortcuts.setBinding(.command("m"), for: EditorShortcutAction.indent)
+        shortcuts.resetToDefaults()
+        XCTAssertEqual(shortcuts.binding(for: EditorShortcutAction.indent).key, "tab")
     }
 
     func testCodableColorRGBFormatsHex() {

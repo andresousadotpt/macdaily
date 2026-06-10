@@ -115,7 +115,7 @@ struct EditorView: View {
 
     private var previewPane: some View {
         ScrollView {
-            Markdown(editor.text)
+            Markdown(MarkdownPreviewPreprocessor.normalizeForPreview(editor.text))
                 .macDailyMarkdownPreview(appearance: appearance)
                 .font(AppearanceFormatting.previewFont(for: appearance))
                 .lineSpacing(appearance.lineSpacing.points)

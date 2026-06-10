@@ -1,18 +1,44 @@
 import SwiftUI
 import MacDailyCore
 
+private enum ShortcutSettingsItem: Hashable, Identifiable {
+    case format(MarkdownFormatAction)
+    case editor(EditorShortcutAction)
+
+    var id: String {
+        switch self {
+        case .format(let action): "format-\(action.rawValue)"
+        case .editor(let action): "editor-\(action.rawValue)"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .format(let action): action.label
+        case .editor(let action): action.label
+        }
+    }
+
+    var settingsCategory: String {
+        switch self {
+        case .format(let action): action.settingsCategory
+        case .editor(let action): action.settingsCategory
+        }
+    }
+}
+
 struct KeyboardShortcutsSettingsView: View {
     @Environment(AppViewModel.self) private var app
 
     var body: some View {
         Form {
-            ForEach(groupedActions.keys.sorted(), id: \.self) { category in
+            ForEach(groupedItems.keys.sorted(), id: \.self) { category in
                 Section(category) {
-                    ForEach(groupedActions[category] ?? [], id: \.self) { action in
+                    ForEach(groupedItems[category] ?? [], id: \.self) { item in
                         HStack {
-                            Text(action.label)
+                            Text(item.label)
                             Spacer()
-                            KeyBindingRecorder(binding: binding(for: action))
+                            KeyBindingRecorder(binding: binding(for: item))
                         }
                     }
                 }
@@ -23,24 +49,39 @@ struct KeyboardShortcutsSettingsView: View {
                     app.resetKeyboardShortcuts()
                 }
             } footer: {
-                Text("Click a shortcut, then press the new key combination. Underline inserts HTML tags. Heading shortcuts apply to the current line.")
+                Text("Click a shortcut, then press the new key combination. Underline inserts HTML tags. Heading shortcuts apply to the current line. Tab indents selected lines or inserts a tab on a single line. Outdent removes indentation from selected lines.")
             }
         }
         .formStyle(.grouped)
         .padding()
     }
 
-    private var groupedActions: [String: [MarkdownFormatAction]] {
-        Dictionary(grouping: MarkdownFormatAction.formattingCases, by: \.settingsCategory)
+    private var shortcutItems: [ShortcutSettingsItem] {
+        MarkdownFormatAction.formattingCases.map(ShortcutSettingsItem.format)
+            + EditorShortcutAction.shortcutCases.map(ShortcutSettingsItem.editor)
     }
 
-    private func binding(for action: MarkdownFormatAction) -> Binding<KeyBinding> {
-        Binding(
-            get: { app.config.keyboardShortcuts.binding(for: action) },
-            set: { newValue in
-                app.updateKeyboardShortcuts { $0.setBinding(newValue, for: action) }
-            }
-        )
+    private var groupedItems: [String: [ShortcutSettingsItem]] {
+        Dictionary(grouping: shortcutItems, by: \.settingsCategory)
+    }
+
+    private func binding(for item: ShortcutSettingsItem) -> Binding<KeyBinding> {
+        switch item {
+        case .format(let action):
+            Binding(
+                get: { app.config.keyboardShortcuts.binding(for: action) },
+                set: { newValue in
+                    app.updateKeyboardShortcuts { $0.setBinding(newValue, for: action) }
+                }
+            )
+        case .editor(let action):
+            Binding(
+                get: { app.config.keyboardShortcuts.binding(for: action) },
+                set: { newValue in
+                    app.updateKeyboardShortcuts { $0.setBinding(newValue, for: action) }
+                }
+            )
+        }
     }
 }
 
@@ -68,11 +109,11 @@ private struct KeyBindingRecorder: View {
                 return .handled
             }
 
-            let characters = press.characters.lowercased()
-            guard !characters.isEmpty else { return .ignored }
+            let key = recordedKey(for: press)
+            guard let key else { return .ignored }
 
             binding = KeyBinding(
-                key: String(characters.last!),
+                key: key,
                 command: press.modifiers.contains(.command),
                 shift: press.modifiers.contains(.shift),
                 option: press.modifiers.contains(.option),
@@ -80,6 +121,18 @@ private struct KeyBindingRecorder: View {
             )
             isRecording = false
             return .handled
+        }
+    }
+
+    private func recordedKey(for press: KeyPress) -> String? {
+        switch press.key {
+        case .home: return "home"
+        case .end: return "end"
+        case .tab: return "tab"
+        default:
+            let characters = press.characters.lowercased()
+            guard !characters.isEmpty else { return nil }
+            return String(characters.last!)
         }
     }
 }

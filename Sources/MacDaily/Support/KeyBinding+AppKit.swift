@@ -3,14 +3,18 @@ import SwiftUI
 import MacDailyCore
 
 extension KeyBinding {
-    func matches(_ event: NSEvent) -> Bool {
+    func matches(_ event: NSEvent, toleratingExtraShift: Bool = false) -> Bool {
         guard event.type == .keyDown else { return false }
 
         let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
         let hasCommand = flags.contains(.command)
-        let hasShift = flags.contains(.shift)
+        var hasShift = flags.contains(.shift)
         let hasOption = flags.contains(.option)
         let hasControl = flags.contains(.control)
+
+        if toleratingExtraShift && hasShift && !shift {
+            hasShift = false
+        }
 
         guard hasCommand == command,
               hasShift == shift,
@@ -19,12 +23,27 @@ extension KeyBinding {
             return false
         }
 
+        switch key {
+        case "home":
+            return event.specialKey == .home
+        case "end":
+            return event.specialKey == .end
+        case "tab":
+            return event.specialKey == .tab
+        default:
+            break
+        }
+
         guard let characters = event.charactersIgnoringModifiers?.lowercased(),
               let pressed = characters.last else {
             return false
         }
 
         return String(pressed) == key.lowercased()
+    }
+
+    func matches(_ event: NSEvent) -> Bool {
+        matches(event, toleratingExtraShift: false)
     }
 
     var swiftUIModifiers: EventModifiers {
@@ -46,6 +65,16 @@ extension KeyboardShortcuts {
     func matchingAction(for event: NSEvent) -> MarkdownFormatAction? {
         for action in MarkdownFormatAction.formattingCases {
             if binding(for: action).matches(event) {
+                return action
+            }
+        }
+        return nil
+    }
+
+    func matchingEditorAction(for event: NSEvent) -> EditorShortcutAction? {
+        for action in EditorShortcutAction.shortcutCases {
+            let binding = binding(for: action)
+            if binding.matches(event, toleratingExtraShift: action.allowsShiftSelectionExtension) {
                 return action
             }
         }
