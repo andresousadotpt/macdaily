@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    if: "${{ !startsWith(github.event.head_commit.message, 'chore: bump version') }}"
+    env:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bump version if tag exists
+        id: version
+        run: |
+          chmod +x packaging/bump-version.sh
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" packaging/Info.plist)
+          if git rev-parse "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            VERSION=$(./packaging/bump-version.sh patch)
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add packaging/Info.plist
+            git commit -m "chore: bump version to ${VERSION}"
+            git push
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build app
+        run: |
+          chmod +x packaging/build-app.sh
+          ./packaging/build-app.sh
+
+      - name: Create release zip
+        run: |
+          COPYFILE_DISABLE=1 ditto -c -k --keepParent "dist/macdaily.app" "macdaily-${{ steps.version.outputs.version }}.zip"
+
+      - name: Upload GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: macdaily ${{ steps.version.outputs.version }}
+          files: macdaily-${{ steps.version.outputs.version }}.zip
+          make_latest: true
+          overwrite_files: true
+
+      - name: Update Homebrew cask
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' }}
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          SHA256=$(shasum -a 256 "macdaily-${VERSION}.zip" | awk '{ print $1 }')
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/andresousadotpt/homebrew-tap.git" tap
+          mkdir -p tap/Casks
+          cp packaging/macdaily.rb tap/Casks/macdaily.rb
+          sed -i '' "s/version \".*\"/version \"${VERSION}\"/" tap/Casks/macdaily.rb
+          sed -i '' "s/sha256 .*/sha256 \"${SHA256}\"/" tap/Casks/macdaily.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/macdaily.rb
+          git diff --cached --quiet || git commit -m "macdaily ${VERSION}"
+          git push origin main
