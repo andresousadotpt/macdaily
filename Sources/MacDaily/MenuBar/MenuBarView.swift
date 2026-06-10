@@ -62,6 +62,12 @@ struct MenuBarView: View {
             }
             .controlSize(.large)
             .buttonStyle(.borderedProminent)
+
+            Divider()
+
+            Button("Quit macdaily") {
+                quitApp()
+            }
         }
         .padding(14)
         .frame(width: 312)
@@ -83,5 +89,10 @@ struct MenuBarView: View {
             MainWindowOpener.present()
             await app.ensureTodaysNote(switchToToday: true)
         }
+    }
+
+    private func quitApp() {
+        StatusBarController.shared.closePopover()
+        NSApp.terminate(nil)
     }
 }
