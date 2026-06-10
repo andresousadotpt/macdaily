@@ -53,11 +53,13 @@ final class LineNumberGutterView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         gutterBackgroundColor.setFill()
-        dirtyRect.fill()
+        bounds.fill()
 
         guard let textView,
               let layoutManager = textView.layoutManager,
               let textContainer = textView.textContainer else { return }
+
+        layoutManager.ensureLayout(for: textContainer)
 
         let attributes: [NSAttributedString.Key: Any] = [
             .font: numberFont,
@@ -81,33 +83,80 @@ final class LineNumberGutterView: NSView {
         var lineNumber = 1
         var index = 0
 
-        while index <= string.length {
-            let lineRange = string.lineRange(for: NSRange(location: min(index, string.length), length: 0))
-            let intersectsVisible = NSMaxRange(lineRange) > characterRange.location
-                && lineRange.location <= NSMaxRange(characterRange)
-
-            if intersectsVisible {
-                let glyphLineRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
-                if glyphLineRange.location != NSNotFound {
-                    let lineRect = layoutManager.lineFragmentRect(forGlyphAt: glyphLineRange.location, effectiveRange: nil)
-                    let drawY = relativePoint.y + lineRect.origin.y + origin.y
-
-                    if drawY + lineRect.height >= 0, drawY <= bounds.height {
-                        drawLineNumber(
-                            lineNumber,
-                            y: drawY,
-                            lineHeight: lineRect.height,
-                            attributes: attributes
-                        )
-                    }
-                }
-            }
-
+        while index < string.length {
+            let lineRange = string.lineRange(for: NSRange(location: index, length: 0))
+            drawLineNumberIfVisible(
+                lineNumber,
+                lineRange: lineRange,
+                layoutManager: layoutManager,
+                characterRange: characterRange,
+                relativePoint: relativePoint,
+                origin: origin,
+                attributes: attributes
+            )
             lineNumber += 1
-            let nextIndex = NSMaxRange(lineRange)
-            if nextIndex <= index { break }
-            index = nextIndex
+            index = NSMaxRange(lineRange)
         }
+
+        if string.character(at: string.length - 1) == unichar(10) {
+            drawTrailingEmptyLineNumber(
+                lineNumber,
+                layoutManager: layoutManager,
+                relativePoint: relativePoint,
+                origin: origin,
+                attributes: attributes
+            )
+        }
+    }
+
+    private func drawTrailingEmptyLineNumber(
+        _ lineNumber: Int,
+        layoutManager: NSLayoutManager,
+        relativePoint: NSPoint,
+        origin: NSPoint,
+        attributes: [NSAttributedString.Key: Any]
+    ) {
+        let lineRect = layoutManager.extraLineFragmentRect
+        guard !lineRect.isNull, lineRect.height > 0 else { return }
+
+        let drawY = relativePoint.y + lineRect.origin.y + origin.y
+        guard drawY + lineRect.height >= 0, drawY <= bounds.height else { return }
+
+        let usedHeight = layoutManager.extraLineFragmentUsedRect.height
+        drawLineNumber(
+            lineNumber,
+            y: drawY,
+            lineHeight: usedHeight > 0 ? usedHeight : lineRect.height,
+            attributes: attributes
+        )
+    }
+
+    private func drawLineNumberIfVisible(
+        _ lineNumber: Int,
+        lineRange: NSRange,
+        layoutManager: NSLayoutManager,
+        characterRange: NSRange,
+        relativePoint: NSPoint,
+        origin: NSPoint,
+        attributes: [NSAttributedString.Key: Any]
+    ) {
+        let intersectsVisible = NSMaxRange(lineRange) > characterRange.location
+            && lineRange.location <= NSMaxRange(characterRange)
+        guard intersectsVisible else { return }
+
+        let glyphLineRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
+        guard glyphLineRange.location != NSNotFound else { return }
+
+        let lineRect = layoutManager.lineFragmentRect(forGlyphAt: glyphLineRange.location, effectiveRange: nil)
+        let drawY = relativePoint.y + lineRect.origin.y + origin.y
+        guard drawY + lineRect.height >= 0, drawY <= bounds.height else { return }
+
+        drawLineNumber(
+            lineNumber,
+            y: drawY,
+            lineHeight: lineRect.height,
+            attributes: attributes
+        )
     }
 
     private func drawLineNumber(

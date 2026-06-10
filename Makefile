@@ -7,7 +7,11 @@ run: build
 	swift run MacDaily
 
 test:
-	swift test
+	@if [ -d "/Applications/Xcode.app/Contents/Developer" ]; then \
+		DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test; \
+	else \
+		swift test; \
+	fi
 
 app:
 	./packaging/build-app.sh
