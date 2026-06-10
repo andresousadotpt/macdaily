@@ -1,35 +1,37 @@
 #!/usr/bin/env bash
 #
-# Builds macdaily in release mode and assembles a distributable macdaily.app bundle.
+# Builds the app in release mode and assembles a distributable .app bundle.
 # Usage: ./packaging/build-app.sh [output-dir]   (default output: ./dist)
 #
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=app.env
+source "$ROOT/packaging/app.env"
+
 OUT_DIR="${1:-$ROOT/dist}"
-APP_NAME="macdaily"
-EXECUTABLE="MacDaily"
-BUNDLE="$OUT_DIR/$APP_NAME.app"
+BUNDLE="$OUT_DIR/$APP_BUNDLE_NAME.app"
+RESOURCES_DIR="$ROOT/Sources/$APP_EXECUTABLE/Resources"
 
 echo "==> Building release binary"
 swift build -c release --package-path "$ROOT"
-BIN_PATH="$(swift build -c release --package-path "$ROOT" --show-bin-path)/$EXECUTABLE"
+BIN_PATH="$(swift build -c release --package-path "$ROOT" --show-bin-path)/$APP_EXECUTABLE"
 
 echo "==> Assembling $BUNDLE"
 rm -rf "$BUNDLE"
 mkdir -p "$BUNDLE/Contents/MacOS"
 mkdir -p "$BUNDLE/Contents/Resources"
 
-cp "$BIN_PATH" "$BUNDLE/Contents/MacOS/$EXECUTABLE"
+cp "$BIN_PATH" "$BUNDLE/Contents/MacOS/$APP_EXECUTABLE"
 cp "$ROOT/packaging/Info.plist" "$BUNDLE/Contents/Info.plist"
-cp "$ROOT/packaging/MacDaily.entitlements" "$BUNDLE/Contents/entitlements.plist"
+cp "$ROOT/packaging/$ENTITLEMENTS_FILE" "$BUNDLE/Contents/entitlements.plist"
 
-if [[ ! -f "$ROOT/Sources/MacDaily/Resources/Logo.png" ]]; then
+if [[ ! -f "$RESOURCES_DIR/Logo.png" ]]; then
   echo "==> Generating AppIcon.png (no Logo.png in Resources)"
   swift "$ROOT/packaging/generate-icon.swift" "$ROOT/packaging/AppIcon.png"
   SRC_ICON="$ROOT/packaging/AppIcon.png"
 else
-  SRC_ICON="$ROOT/Sources/MacDaily/Resources/Logo.png"
+  SRC_ICON="$RESOURCES_DIR/Logo.png"
   cp "$SRC_ICON" "$ROOT/packaging/AppIcon.png"
 fi
 

@@ -151,11 +151,12 @@ let contents = try await noteStore?.readContents(of: note)
 
 | File | Purpose |
 |------|---------|
-| `packaging/build-app.sh` | Assembles `dist/macdaily.app` (release build, icon, ad-hoc sign) |
+| `packaging/app.env` | App identity — Makefile, build scripts, and CI source this |
+| `packaging/build-app.sh` | Assembles `dist/{APP_BUNDLE_NAME}.app` (release build, icon, ad-hoc sign) |
 | `packaging/Info.plist` | Bundle metadata; **version source of truth** (`CFBundleShortVersionString`) |
 | `packaging/MacDaily.entitlements` | Sandbox/entitlements for the bundle |
 | `packaging/bump-version.sh` | Bumps patch/minor/major in Info.plist |
-| `packaging/macdaily.rb` | Homebrew cask template |
+| `packaging/cask.rb.template` | Homebrew cask template (CI fills version/sha256) |
 | `packaging/generate-icon.swift` | Generates AppIcon when Logo.png is missing |
 | `.github/workflows/release.yml` | CI: version bump, build, GitHub Release zip, Homebrew tap update |
 

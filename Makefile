@@ -1,10 +1,13 @@
+include packaging/app.env
+export
+
 .PHONY: build run test app clean bump-version
 
 build:
 	swift build
 
 run: build
-	swift run MacDaily
+	swift run $(APP_EXECUTABLE)
 
 test:
 	@if [ -d "/Applications/Xcode.app/Contents/Developer" ]; then \
