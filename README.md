@@ -2,6 +2,8 @@
 
 A native macOS app for writing **one markdown note per day**. Each day gets its own file (`2026-06-10.md`) in a folder you choose. Optional daily reminders nudge you to write.
 
+![macdaily demo — daily note editor with sidebar and menu bar](docs/demo.gif)
+
 ## Install
 
 ### Option A — Build from source (recommended)
