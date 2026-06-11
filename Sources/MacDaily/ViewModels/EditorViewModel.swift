@@ -33,6 +33,7 @@ final class EditorViewModel {
     private(set) var isLoading = false
     private(set) var previewMode: EditorPreviewMode = .editor
     private(set) var formatRequest: MarkdownFormatAction?
+    var scrollToLine: Int?
 
     @ObservationIgnored private var currentNote: DailyNote?
     @ObservationIgnored private let debouncer = Debouncer()
@@ -48,6 +49,14 @@ final class EditorViewModel {
 
     func clearFormatRequest() {
         formatRequest = nil
+    }
+
+    func requestScrollToLine(_ line: Int) {
+        scrollToLine = line
+    }
+
+    func clearScrollToLineRequest() {
+        scrollToLine = nil
     }
 
     func resetForFolderChange() {

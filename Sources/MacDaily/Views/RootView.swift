@@ -42,5 +42,18 @@ struct RootView: View {
                 await app.flushPendingSaves()
             }
         }
+        .sheet(isPresented: Binding(
+            get: { app.showNoteSearch },
+            set: { newValue in
+                if newValue {
+                    app.openNoteSearch()
+                } else {
+                    app.closeNoteSearch()
+                }
+            }
+        )) {
+            NoteSearchView()
+                .environment(app)
+        }
     }
 }

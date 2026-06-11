@@ -71,6 +71,14 @@ struct MacDailyApp: App {
             }
 
             CommandGroup(after: .toolbar) {
+                Button("Search Notes…") {
+                    app.openNoteSearch()
+                }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+                .disabled(!app.hasNotesFolder)
+
+                Divider()
+
                 Button("Zoom In") {
                     app.increaseEditorZoom()
                 }

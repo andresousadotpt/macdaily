@@ -78,4 +78,16 @@ public actor NoteStore {
     public func fileURL(for date: Date) -> URL {
         folderURL.appendingPathComponent(DateFormatting.filename(for: DateFormatting.startOfDay(date)))
     }
+
+    public func search(matching query: String) throws -> [NoteSearchMatch] {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedQuery.isEmpty else { return [] }
+
+        var results: [NoteSearchMatch] = []
+        for note in try listNotes() {
+            let content = try readContents(of: note)
+            results.append(contentsOf: NoteSearch.matches(in: content, for: note.date, query: trimmedQuery))
+        }
+        return results
+    }
 }

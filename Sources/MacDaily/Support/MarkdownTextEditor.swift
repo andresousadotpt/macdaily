@@ -104,6 +104,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
     var backgroundColor: NSColor
     var keyboardShortcuts: KeyboardShortcuts
     @Binding var formatRequest: MarkdownFormatAction?
+    @Binding var scrollToLine: Int?
     var onTextChange: (String) -> Void
 
     private var usesPreviewColors: Bool {
@@ -184,6 +185,13 @@ struct MarkdownTextEditor: NSViewRepresentable {
             context.coordinator.applyFormat(action)
             DispatchQueue.main.async {
                 formatRequest = nil
+            }
+        }
+
+        if let line = scrollToLine {
+            context.coordinator.scrollToLine(line, in: textView)
+            DispatchQueue.main.async {
+                scrollToLine = nil
             }
         }
     }
@@ -329,6 +337,28 @@ struct MarkdownTextEditor: NSViewRepresentable {
             setContent(result.text, on: textView, preserving: result.selectedRange)
             parent.text = result.text
             parent.onTextChange(result.text)
+        }
+
+        @MainActor func scrollToLine(_ lineNumber: Int, in textView: FormattingTextView) {
+            guard lineNumber > 0 else { return }
+
+            let nsString = textView.string as NSString
+            guard nsString.length > 0 else { return }
+
+            var location = 0
+            var currentLine = 1
+
+            while currentLine < lineNumber, location < nsString.length {
+                let range = nsString.lineRange(for: NSRange(location: location, length: 0))
+                location = NSMaxRange(range)
+                currentLine += 1
+            }
+
+            let safeLocation = min(location, max(nsString.length - 1, 0))
+            let lineRange = nsString.lineRange(for: NSRange(location: safeLocation, length: 0))
+            textView.setSelectedRange(lineRange)
+            textView.scrollRangeToVisible(lineRange)
+            textView.showFindIndicator(for: lineRange)
         }
     }
 }

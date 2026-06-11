@@ -24,12 +24,19 @@ final class AppViewModel {
 
     var errorMessage: String?
     var showFormattingPreviewSheet = false
+    var showNoteSearch = false
+    var noteSearchQuery = ""
+    private(set) var noteSearchResults: [NoteSearchMatch] = []
+    private(set) var isSearchingNotes = false
+    private(set) var searchSelectionRevision = 0
+    var pendingEditorLine: Int?
 
     @ObservationIgnored private let configStore = ConfigStore()
     @ObservationIgnored private var noteStore: NoteStore?
     @ObservationIgnored private var dayRolloverMonitor: DayRolloverMonitor?
     @ObservationIgnored private var activeObserver: NSObjectProtocol?
     @ObservationIgnored private let menuBarSaveDebouncer = Debouncer()
+    @ObservationIgnored private let noteSearchDebouncer = Debouncer(delay: .milliseconds(250))
 
     var hasNotesFolder: Bool { config.notesFolderURL != nil }
 
@@ -388,6 +395,65 @@ final class AppViewModel {
 
     func closeFormattingPreview() {
         showFormattingPreviewSheet = false
+    }
+
+    func openNoteSearch() {
+        guard hasNotesFolder else { return }
+        noteSearchQuery = ""
+        noteSearchResults = []
+        isSearchingNotes = false
+        showNoteSearch = true
+    }
+
+    func closeNoteSearch() {
+        showNoteSearch = false
+        noteSearchDebouncer.cancel("noteSearch")
+    }
+
+    func updateNoteSearchQuery(_ query: String) {
+        noteSearchQuery = query
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            noteSearchDebouncer.cancel("noteSearch")
+            noteSearchResults = []
+            isSearchingNotes = false
+            return
+        }
+
+        isSearchingNotes = true
+        noteSearchDebouncer.schedule("noteSearch") { [weak self] in
+            await self?.performNoteSearchNow()
+        }
+    }
+
+    func performNoteSearchNow() async {
+        let query = noteSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty, let noteStore else {
+            noteSearchResults = []
+            isSearchingNotes = false
+            return
+        }
+
+        isSearchingNotes = true
+        do {
+            noteSearchResults = try await noteStore.search(matching: query)
+        } catch {
+            errorMessage = error.localizedDescription
+            noteSearchResults = []
+        }
+        isSearchingNotes = false
+    }
+
+    func selectSearchResult(_ match: NoteSearchMatch) {
+        pendingEditorLine = match.lineNumber
+        selectedDate = DateFormatting.startOfDay(match.date)
+        searchSelectionRevision += 1
+        closeNoteSearch()
+    }
+
+    func consumePendingEditorLine() -> Int? {
+        defer { pendingEditorLine = nil }
+        return pendingEditorLine
     }
 
     func updateKeyboardShortcuts(_ transform: (inout KeyboardShortcuts) -> Void) {

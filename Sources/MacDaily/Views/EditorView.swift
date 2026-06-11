@@ -40,6 +40,13 @@ struct EditorView: View {
                 }
                 .disabled(!app.hasNotesFolder)
 
+                Button {
+                    app.openNoteSearch()
+                } label: {
+                    Label("Search Notes", systemImage: "magnifyingglass")
+                }
+                .disabled(!app.hasNotesFolder)
+
                 SettingsLink {
                     Label("Settings", systemImage: "gearshape")
                 }
@@ -65,7 +72,7 @@ struct EditorView: View {
     }
 
     private var editorReloadID: String {
-        "\(app.folderRevision)-\(app.selectedDate.timeIntervalSince1970)"
+        "\(app.folderRevision)-\(app.selectedDate.timeIntervalSince1970)-\(app.searchSelectionRevision)"
     }
 
     @ViewBuilder
@@ -104,6 +111,7 @@ struct EditorView: View {
                     }
                 }
             ),
+            scrollToLine: $editor.scrollToLine,
             onTextChange: { newValue in
                 guard let store = app.noteStoreIfAvailable() else { return }
                 editor.updateText(newValue, store: store)
@@ -135,6 +143,9 @@ struct EditorView: View {
         do {
             guard let note = try await app.selectedNote() else { return }
             await editor.load(note: note, store: store)
+            if let line = app.consumePendingEditorLine() {
+                editor.requestScrollToLine(line)
+            }
         } catch {
             app.errorMessage = error.localizedDescription
         }

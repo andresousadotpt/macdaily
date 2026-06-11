@@ -39,7 +39,7 @@ Download `macdaily-{version}.zip` from [Releases](https://github.com/andresousad
 1. Launch macdaily and choose a notes folder.
 2. Today's note is created automatically — on launch, at local midnight, when the Mac wakes, and when the app returns to the foreground.
 3. Use the **menu bar icon** (book) for quick access: edit today's note in the popover or click **Open macdaily** for the full window.
-4. Pick earlier days from the sidebar.
+4. Pick earlier days from the sidebar, or press **⌘⇧F** to search text across all notes.
 5. Open **Settings** (⌘,) to change the notes folder, configure daily reminders, customize appearance, or back up settings.
 
 Settings are saved automatically to `~/Library/Application Support/MacDaily/config.json`. Use **Settings → Backup** to export or import a JSON file (appearance, shortcuts, reminders, and startup — not your notes folder path).
