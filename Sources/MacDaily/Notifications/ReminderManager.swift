@@ -109,11 +109,14 @@ final class ReminderManager: NSObject, ObservableObject, UNUserNotificationCente
     func removeScheduledReminders() async {
         guard let center = notificationCenter() else { return }
 
-        let pending = await center.pendingNotificationRequests()
-        let ids = pending
-            .map(\.identifier)
-            .filter { $0.hasPrefix("macdaily.") }
-        center.removePendingNotificationRequests(withIdentifiers: ids)
+        // The app schedules only daily-note reminders, so clearing everything is
+        // safe and — unlike an identifier-prefix filter — also reaches orphaned
+        // repeating notifications left behind by earlier builds that used a
+        // different identifier format. Those persist in the system notification
+        // daemon and keep firing even while the app is closed and reminders are
+        // disabled, so we must remove them unconditionally.
+        center.removeAllPendingNotificationRequests()
+        center.removeAllDeliveredNotifications()
     }
 
     nonisolated func userNotificationCenter(
